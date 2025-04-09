@@ -1,19 +1,317 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Hello, World!</title>
-	</head>
-	<body>
-		<h1 id="heading"></h1>
-		<script>
-			fetch('/message')
-				.then((resp) => resp.text())
-				.then((text) => {
-					const h1 = document.getElementById('heading');
-					h1.textContent = text;
-				});
-		</script>
-	</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DevWeek RAG</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 2rem;
+        background-color: #f6f9fc;
+      }
+      .container {
+        background-color: white;
+        padding: 2rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #2d3748;
+        margin-bottom: 1.5rem;
+      }
+      .search-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+      .search-type {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+      }
+      .search-type label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        cursor: pointer;
+      }
+      .search-input {
+        padding: 0.75rem;
+        font-size: 1rem;
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        width: 100%;
+      }
+      .search-button {
+        padding: 0.75rem 1.5rem;
+        background-color: #f48120;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: background-color 0.2s;
+      }
+      .search-button:hover {
+        background-color: #f6921e;
+      }
+      #results {
+        margin-top: 2rem;
+      }
+      .result-item {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 6px;
+        padding: 1.25rem;
+        margin-bottom: 1rem;
+        max-width: 100%;
+        overflow: hidden;
+      }
+      .result-item:hover {
+        border-color: #f48120;
+      }
+      .result-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        gap: 1rem;
+      }
+      .result-title {
+        font-weight: 500;
+        color: #2d3748;
+        word-break: break-word;
+        flex: 1;
+        min-width: 0;
+      }
+      .result-score {
+        background: #f6f9fc;
+        color: #f48120;
+        padding: 0.25rem 0.75rem;
+        border-radius: 4px;
+        font-size: 0.875rem;
+        white-space: nowrap;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        flex-shrink: 0;
+      }
+      .result-content {
+        color: #4a5568;
+        font-size: 0.95rem;
+        line-height: 1.6;
+        overflow-wrap: break-word;
+        word-break: break-word;
+        max-height: 300px;
+        overflow-y: auto;
+        padding-right: 0.5rem;
+      }
+      .search-info {
+        color: #718096;
+        font-size: 0.875rem;
+        margin-bottom: 1rem;
+      }
+      .ai-response {
+        background: #f6f9fc;
+        border: 1px solid #f48120;
+        border-radius: 6px;
+        padding: 1.25rem;
+        margin-bottom: 1.5rem;
+        color: #404041;
+        font-size: 1rem;
+        line-height: 1.6;
+      }
+      .ai-response p {
+        margin: 0.75rem 0;
+      }
+      .ai-response p:first-child {
+        margin-top: 0;
+      }
+      .ai-response p:last-child {
+        margin-bottom: 0;
+      }
+      .ai-response code {
+        background: rgba(0, 0, 0, 0.05);
+        padding: 0.2em 0.4em;
+        border-radius: 3px;
+        font-size: 0.9em;
+        font-family: ui-monospace, monospace;
+      }
+      .ai-response pre {
+        background: rgba(0, 0, 0, 0.05);
+        padding: 1rem;
+        border-radius: 6px;
+        overflow-x: auto;
+      }
+      .ai-response pre code {
+        background: none;
+        padding: 0;
+      }
+      .ai-response strong {
+        color: #f48120;
+      }
+      .ai-response-header {
+        font-weight: 500;
+        color: #f48120;
+        margin-bottom: 0.75rem;
+      }
+      .loading {
+        color: #f48120;
+        font-weight: 500;
+      }
+      .top-links {
+        text-align: right;
+        margin-bottom: 1rem;
+      }
+      .top-links a {
+        color: #f48120;
+        text-decoration: none;
+        margin-left: 1rem;
+        font-size: 0.9rem;
+      }
+      .top-links a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top-links">
+      <a
+        href="https://developers.cloudflare.com/autorag/"
+        target="_blank"
+        rel="noopener noreferrer"
+        >AutoRAG Docs</a
+      >
+      <a
+        href="https://github.com/harshil1712/autorag-demo"
+        target="_blank"
+        rel="noopener noreferrer"
+        >GitHub</a
+      >
+    </div>
+    <div class="container">
+      <h1>DevWeek RAG</h1>
+      <p>Search for information for the Developer Week</p>
+      <form class="search-form" id="searchForm">
+        <div class="search-type">
+          <label>
+            <input type="radio" name="searchType" value="ai" checked />
+            AI Search
+          </label>
+          <label>
+            <input type="radio" name="searchType" value="regular" />
+            Search
+          </label>
+        </div>
+        <input
+          type="text"
+          id="searchQuery"
+          class="search-input"
+          placeholder="Enter your search query"
+          required
+        />
+        <button type="submit" class="search-button">Search</button>
+      </form>
+      <div id="results"></div>
+    </div>
+
+    <script>
+      document
+        .getElementById("searchForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const query = document.getElementById("searchQuery").value;
+          const resultsDiv = document.getElementById("results");
+
+          try {
+            resultsDiv.innerHTML = '<div class="loading">Searching...</div>';
+            const searchType = document.querySelector(
+              'input[name="searchType"]:checked'
+            ).value;
+            const endpoint = searchType === "ai" ? "/search/ai" : "/search";
+            let hasAiResponse = false;
+
+            const response = await fetch(endpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ query }),
+            });
+
+            const data = await response.json();
+
+            // Clear previous results
+            resultsDiv.innerHTML = "";
+
+            if (searchType === "ai") {
+              // For AI search, only show the AI response
+              const aiResponse = document.createElement("div");
+              aiResponse.className = "ai-response";
+              // Parse and render markdown
+              aiResponse.innerHTML = marked.parse(data.response.response);
+              resultsDiv.appendChild(aiResponse);
+            } else {
+              // For regular search, show search results
+              // Add search info
+              const searchInfo = document.createElement("div");
+              searchInfo.className = "search-info";
+              searchInfo.textContent = `Search results for: "${query}"`;
+              resultsDiv.appendChild(searchInfo);
+
+              // Display search results
+              if (data.response.data && data.response.data.length > 0) {
+                data.response.data.forEach((result) => {
+                  const resultItem = document.createElement("div");
+                  resultItem.className = "result-item";
+
+                  const header = document.createElement("div");
+                  header.className = "result-header";
+
+                  const title = document.createElement("div");
+                  title.className = "result-title";
+                  title.textContent = result.filename;
+
+                  const score = document.createElement("div");
+                  score.className = "result-score";
+                  score.textContent = `Score: ${Math.round(
+                    result.score * 100
+                  )}%`;
+
+                  header.appendChild(title);
+                  header.appendChild(score);
+
+                  const content = document.createElement("div");
+                  content.className = "result-content";
+                  // Combine all text content from the chunks
+                  const textContent = result.content
+                    .map((chunk) => chunk.text)
+                    .join(" ")
+                    // Clean up HTML entities and escape sequences
+                    .replace(/\\&quot;/g, '"')
+                    .replace(/\\n/g, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+                  content.textContent = textContent;
+
+                  resultItem.appendChild(header);
+                  resultItem.appendChild(content);
+                  resultsDiv.appendChild(resultItem);
+                });
+              } else {
+                resultsDiv.innerHTML =
+                  '<div class="result-item">No results found</div>';
+              }
+            }
+          } catch (error) {
+            resultsDiv.textContent = `Error: ${error.message}`;
+          }
+        });
+    </script>
+  </body>
 </html>
